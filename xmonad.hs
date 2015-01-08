@@ -16,6 +16,7 @@ import XMonad.Hooks.ManageDocks
 import XMonad.Layout.Tabbed
 import XMonad.Layout.Dishes
 import XMonad.Layout.Spacing
+import XMonad.Layout.ResizableTile
 import XMonad.Layout.ToggleLayouts
 import XMonad.Layout.PerWorkspace
 import XMonad.Util.Scratchpad
@@ -50,16 +51,22 @@ myFocusFollowsMouse :: Bool
 myFocusFollowsMouse = True
 
 myBorderWidth :: Dimension
-myBorderWidth = 2
+myBorderWidth = 3
 
 myTerminal :: String
-myTerminal = "urxvt"
+myTerminal = "gnome-terminal --hide-menubar"
+
+myFileManager :: String
+myFileManager = "nautilus"
 
 myEmacsclient :: String
 myEmacsclient = "emacsclient -c -a ''"
 
 myDmenu :: String
-myDmenu = "dmenu_run -p '->' -b -fn 'DejaVu Sans Mono-14' -nb '#252525' -nf '#bcbcbc' -sb '#f39c12'"
+myDmenu = "mydmenu"
+
+myPassDmenu :: String
+myPassDmenu = "passmenu"
 
 myNormalBorderColor :: String
 myNormalBorderColor = "#004358"
@@ -92,8 +99,8 @@ myLogHook x = dynamicLogWithPP $ xmobarPP
   , ppLayout          = const ""
   , ppSort            = fmap (.scratchpadFilterOutWorkspace) $ ppSort xmobarPP
   , ppCurrent         = wrap "<fc=#f39c12>λ" "</fc>" . id
-  , ppVisible         = wrap "<fc=#f39c12>." "</fc>" . id
-  , ppHidden          = wrap "<fc=#bcbcbc>.." "</fc>" . id
+  , ppVisible         = wrap "<fc=#f39c12>(" ")</fc>" . id
+  , ppHidden          = wrap "<fc=#bcbcbc>" ".</fc>" . id
   , ppHiddenNoWindows = xmobarColor "#bcbcbc" ""
   , ppSep             = " | "
   , ppWsSep           = " " }
@@ -147,10 +154,12 @@ myCommands :: [Command]
 myCommands = [ (Plain, xK_Return, spawnHere myEmacsclient)
              , (Shift, xK_Return, spawnHere myTerminal)
              , (Plain, xK_s, spawn myDmenu)
+             , (Plain, xK_p, spawn myPassDmenu)
+             , (Shift, xK_n, spawn myFileManager)
 
                -- windows
              , (Shift, xK_c, kill)
-             , (Plain, xK_grave, scratchpadSpawnActionTerminal myTerminal)
+             , (Plain, xK_grave, scratchpadSpawnActionTerminal "urxvt")
              , (Plain, xK_space, sendMessage NextLayout)
              , (Shift, xK_space, sendMessage ToggleLayout)
              , (Plain, xK_Tab, windows StackSet.focusDown)
@@ -179,7 +188,7 @@ myCommands = [ (Plain, xK_Return, spawnHere myEmacsclient)
              , (Plain, xK_i, raiseVolume 4 >> return ())
              ]
 
-myDefaultLayout = spacing 5 (Tall nmaster delta ratio)
+myDefaultLayout = spacing 10 (ResizableTall nmaster delta ratio [])
   where nmaster = 1      -- default number of windows in the master pane
         delta   = 3/100  -- % of screen to increment by when resizing panes
         ratio   = 60/100 -- proportion of screen occupied by master pane
