@@ -1,27 +1,26 @@
-Config { font = "xft:DejaVu Sans Mono-14"
-       , bgColor = "#252525"
-       , fgColor = "#BCBCBC"
+Config { font = "xft:DejaVu Sans Mono-10"
+       , bgColor = "#000000"
+       , fgColor = "#0080ff"
        , border = FullB
-       , borderColor = "#333"
+       , borderColor = "#000"
        , position = Top
        , pickBroadest = False
        , allDesktops = True
        , lowerOnStart = True
        , commands = [ Run StdinReader
-                    , Run Date "%b %d %H:%M " "date" 10
                     , Run Battery [ "--template", "<acstatus> "
                                   , "--Low", "10"
                                   , "--High", "80"
                                   , "--low", "darkred"
-                                  , "--normal", "darkorange"
-                                  , "--high", "darkgreen"
+                                  , "--normal", "#0080ff"
+                                  , "--high", "#0080ff"
                                   , "--"
                                   , "-o", "<left>%(<timeleft>)"
-                                  , "-O", "<fc=#dAA520>⚡</fc>"
-                                  , "-i", "<fc=#006000>⚡⚡</fc>"
+                                  , "-O", "<fc=#0080ff>⚡</fc>"
+                                  , "-i", "<fc=#0080ff>⚡⚡</fc>"
                                   ] 50
                     ]
        , sepChar = "%"
        , alignSep = "}{"
-       , template = " %StdinReader% } { %date% %battery%"
+       , template = "%battery% } %StdinReader% {"
        }

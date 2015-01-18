@@ -1,5 +1,3 @@
--- default desktop configuration for Fedora
-
 import System.FilePath (combine)
 import System.IO (Handle, hPutStrLn)
 import System.Exit
@@ -10,6 +8,8 @@ import qualified Data.Map as Map
 import XMonad
 import XMonad.Actions.SpawnOn (spawnHere)
 import XMonad.Actions.Volume
+import XMonad.Actions.GridSelect (goToSelected, defaultGSConfig)
+import XMonad.Actions.WindowMenu (windowMenu)
 import XMonad.Hooks.DynamicLog
 import XMonad.Hooks.ManageHelpers (isFullscreen, doFullFloat)
 import XMonad.Hooks.ManageDocks
@@ -27,31 +27,31 @@ main :: IO ()
 main = do
   rootPath <- getXMonadDir
   xmproc <- spawnPipe $ printf "xmobar %s" (combine rootPath myXmobarrc)
-  xmonad  $ defaultConfig { terminal = myTerminal
-                          , modMask = myModMask
-                          , focusFollowsMouse = myFocusFollowsMouse
-                          , borderWidth = myBorderWidth
-                          , normalBorderColor = myNormalBorderColor
-                          , focusedBorderColor = myFocusedBorderColor
-                          , workspaces = myWorkspaceNames
+  xmonad $ defaultConfig { terminal = myTerminal
+                         , modMask = myModMask
+                         , focusFollowsMouse = myFocusFollowsMouse
+                         , borderWidth = myBorderWidth
+                         , normalBorderColor = myNormalBorderColor
+                         , focusedBorderColor = myFocusedBorderColor
+                         , workspaces = myWorkspaceNames
 
-                          , keys = (\conf@(XConfig { XMonad.modMask = modm }) ->
-                                     Map.fromList $
-                                     (myKeys modm myCommands)
-                                     ++
-                                     (myWorkspaceCommands conf modm)
-                                     ++
-                                     (myXineramaCommands conf modm))
-                          , logHook = myLogHook xmproc
-                          , layoutHook = myLayout
-                          , manageHook = manageDocks <+> myManageHook
-                          }
+                         , keys = (\conf@(XConfig { XMonad.modMask = modm }) ->
+                                    Map.fromList $
+                                    (myKeys modm myCommands)
+                                    ++
+                                    (myWorkspaceCommands conf modm)
+                                    ++
+                                    (myXineramaCommands conf modm))
+                         , logHook = myLogHook xmproc
+                         , layoutHook = myLayout
+                         , manageHook = manageDocks <+> myManageHook
+                         }
 
 myFocusFollowsMouse :: Bool
 myFocusFollowsMouse = True
 
 myBorderWidth :: Dimension
-myBorderWidth = 3
+myBorderWidth = 2
 
 myTerminal :: String
 myTerminal = "gnome-terminal --hide-menubar"
@@ -72,7 +72,7 @@ myNormalBorderColor :: String
 myNormalBorderColor = "#004358"
 
 myFocusedBorderColor :: String
-myFocusedBorderColor = "#ffa72c"
+myFocusedBorderColor = "#0080ff"
 
 myModMask :: KeyMask
 myModMask = mod4Mask
@@ -95,13 +95,13 @@ myWorkspaceKeys = map snd myWorkspaces
 myLogHook :: Handle -> X ()
 myLogHook x = dynamicLogWithPP $ xmobarPP
   { ppOutput          = hPutStrLn x
-  , ppTitle           = xmobarColor "orange" "" . shorten 50
+  , ppTitle           = xmobarColor "#0080ff" "" . shorten 50
   , ppLayout          = const ""
   , ppSort            = fmap (.scratchpadFilterOutWorkspace) $ ppSort xmobarPP
-  , ppCurrent         = wrap "<fc=#f39c12>λ" "</fc>" . id
-  , ppVisible         = wrap "<fc=#f39c12>(" ")</fc>" . id
-  , ppHidden          = wrap "<fc=#bcbcbc>" ".</fc>" . id
-  , ppHiddenNoWindows = xmobarColor "#bcbcbc" ""
+  , ppCurrent         = wrap "<fc=#0080ff>λ" "</fc>" . id
+  , ppVisible         = wrap "<fc=#0080ff>(" ")</fc>" . id
+  , ppHidden          = wrap "<fc=#333>" ".</fc>" . id
+  , ppHiddenNoWindows = xmobarColor "#333" ""
   , ppSep             = " | "
   , ppWsSep           = " " }
 
@@ -175,6 +175,8 @@ myCommands = [ (Plain, xK_Return, spawnHere myEmacsclient)
              , (Plain, xK_t, withFocused (windows . StackSet.sink))
              , (Plain, xK_comma, sendMessage (IncMasterN 1))
              , (Plain, xK_period, sendMessage (IncMasterN (-1)))
+             , (Plain, xK_g, goToSelected defaultGSConfig)
+             , (Plain, xK_o, windowMenu)
 
                -- xmonad
              , (Shift, xK_e, io (exitWith ExitSuccess))
@@ -182,8 +184,6 @@ myCommands = [ (Plain, xK_Return, spawnHere myEmacsclient)
              , (Plain, xK_Escape, spawn "xlock")
 
                -- media
-             , (None, xK_F2, lowerVolume 4 >> return ())
-             , (None, xK_F3, raiseVolume 4 >> return ())
              , (Plain, xK_d, lowerVolume 4 >> return ())
              , (Plain, xK_i, raiseVolume 4 >> return ())
              ]
