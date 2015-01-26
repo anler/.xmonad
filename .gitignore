@@ -1,4 +1,3 @@
-*
-!.gitignore
-!xmobar
-!xmonad.hs
+*.hi
+*.o
+*.old
