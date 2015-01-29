@@ -10,7 +10,9 @@ import XMonad.Actions.GridSelect (goToSelected, defaultGSConfig)
 import XMonad.Actions.WindowMenu (windowMenu)
 import XMonad.Actions.CycleWS
 import XMonad.Actions.ShowText
-import XMonad.StackSet (focusDown, focusUp, focusMaster, swapMaster, swapUp, swapDown, sink)
+import XMonad.Actions.Volume
+
+import qualified XMonad.StackSet as W
 
 import XMonad.Layout.ResizableTile
 import XMonad.Layout.Spacing
@@ -21,6 +23,8 @@ import XMonad.Layout.NoBorders
 import XMonad.Layout.ToggleLayouts
 
 import XMonad.Util.EZConfig
+import XMonad.Util.NamedScratchpad
+import XMonad.Util.WorkspaceCompare (getSortByIndex)
 import XMonad.Util.Loggers (logCmd, date, logCurrent, logLayout, logTitle)
 
 personalConfig = XMonad.defaultConfig { terminal = myTerminal
@@ -28,12 +32,19 @@ personalConfig = XMonad.defaultConfig { terminal = myTerminal
                                       , focusFollowsMouse = True
                                       , borderWidth = 4
                                       , normalBorderColor = "black"
-                                      , focusedBorderColor = "white"
+                                      , focusedBorderColor = "red"
                                       , workspaces = ["main", "web", "log", "misc"]
                                       , manageHook = myManageHook
                                       , layoutHook = myLayoutHook
                                       , handleEventHook = handleTimerEvent
                                       } `additionalKeysP` myKeys
+
+myFormatVolumeValue :: Double -> String
+myFormatVolumeValue = ("Vol:" ++) . (++ "%") . takeWhile (/= '.') . show
+
+myLowerVolume, myRaiseVolume :: X ()
+myLowerVolume = lowerVolume 1 >>= (flashText defaultSTConfig 1 . myFormatVolumeValue)
+myRaiseVolume = raiseVolume 1 >>= (flashText defaultSTConfig 1 . myFormatVolumeValue)
 
 myPrimaryAction :: String
 myPrimaryAction = "emacsclient -c -a ''"
@@ -42,7 +53,7 @@ mySecondaryAction :: String
 mySecondaryAction = myTerminal
 
 myTerminal :: String
-myTerminal = "gnome-terminal --hide-menubar"
+myTerminal = "urxvt"
 
 myModMask :: KeyMask
 myModMask = mod4Mask
@@ -62,9 +73,21 @@ myManageHookFloat = ["MPlayer", "Gimp", "Steam", "Skype"]
 myManageHookIgnore :: [String]
 myManageHookIgnore = ["desktop_window"]
 
+scratchpads = [ NS "quake" "urxvt -title quake" (title =? "quake")
+                (customFloating $ W.RationalRect (1/6) (1/6) (2/3) (2/3))
+                -- run stardict, find it by class name, place it in the floating window
+                -- 1/6 of screen width from the left, 1/6 of screen height
+                -- from the top, 2/3 of screen width by 2/3 of screen height
+              , NS "stardict" "stardict" (className =? "Stardict")
+                (customFloating $ W.RationalRect (1/6) (1/6) (2/3) (2/3))
+              ]
+  where role = stringProperty "WM_WINDOW_CLASS"
+
 myManageHook :: ManageHook
 myManageHook = composeAll ([className =? x --> doFloat | x <- myManageHookFloat] ++
                            [resource =? x --> doIgnore | x <- myManageHookIgnore])
+                <+>
+               namedScratchpadManageHook scratchpads
 
 myLayoutHook = toggleLayouts (noBorders Full) resizableTallSpaced |||
                (centerMaster resizableTallSpaced) |||
@@ -86,30 +109,34 @@ myKeys = [ ("M-<Return>", spawnHere myPrimaryAction)
          , ("M-S-s", spawn myPassDmenu)
          , ("M-S-n", spawn myFileManager)
          , ("M-b", logCmd "acpi" >>= flashText defaultSTConfig 3 . fromMaybe "")
-         , ("M-d", date "%a %b %d" >>= flashText defaultSTConfig 1 . fromMaybe "")
+         , ("M-d", date "%H:%M - %a %b %d" >>= flashText defaultSTConfig 3 . fromMaybe "")
          , ("M-w", logCurrent >>= flashText defaultSTConfig 1 . fromMaybe "")
          , ("M-t", logTitle >>= flashText defaultSTConfig 3 . fromMaybe "")
 
            -- windows
          , ("M-q", kill)
-         , ("M-m", windows focusMaster)
-         , ("M-S-m", windows swapMaster)
-         , ("M-n", windows focusDown)
-         , ("M-p", windows focusUp)
-         , ("M-S-n", windows swapDown)
-         , ("M-S-p", windows swapUp)
-         , ("M-S-t", withFocused (windows . sink))
+         , ("M-m", windows W.focusMaster)
+         , ("M-S-m", windows W.swapMaster)
+         , ("M-M-S-p", windows W.swapUp)
+         , ("M-S-t", withFocused (windows . W.sink))
          , ("M-S-j", sendMessage Expand)
          , ("M-S-k", sendMessage Shrink)
          , ("M-g", goToSelected defaultGSConfig)
          , ("M-l", windowMenu)
-         , ("M-<Tab>", nextWS)
-         , ("M-S-<Tab>", prevWS)
+         , ("M-<Tab>", windows . W.greedyView =<< findWorkspace getSortByIndexNoSP
+                       Next HiddenNonEmptyWS 1)
+         , ("M-S-<Tab>", windows . W.greedyView =<< findWorkspace getSortByIndexNoSP
+                         Prev HiddenNonEmptyWS 1)
          , ("M-.", sendMessage (IncMasterN 1))
          , ("M-,", sendMessage (IncMasterN (-1)))
 
+           -- scratchpad
+         , ("M--", namedScratchpadAction scratchpads "stardict")
+         , ("M-`", namedScratchpadAction scratchpads "quake")
+
            -- layouts
-         , ("M-<Space>", sendMessage NextLayout)
+         , ("M-<Space>", sendMessage NextLayout >> logLayout >>= flashText defaultSTConfig 1 . fromMaybe "")
+         , ("M-S-<Space>", sendMessage FirstLayout >> logLayout >>= flashText defaultSTConfig 1 . fromMaybe "")
          , ("M-S-f", sendMessage (Toggle "Full"))
 
            -- xmonad
@@ -118,11 +145,15 @@ myKeys = [ ("M-<Return>", spawnHere myPrimaryAction)
          , ("M-<Escape>", spawn "xlock")
 
            -- media
-         , ("<XF86AudioLowerVolume>", spawn "amixer -c 0 set Master 1-")
-         , ("<XF86AudioRaiseVolume>", spawn "amixer -c 0 set Master 1+ unmute")
+         , ("<XF86AudioLowerVolume>", myLowerVolume)
+         , ("M-S-d", myLowerVolume)
+         , ("<XF86AudioRaiseVolume>", myRaiseVolume)
+         , ("M-S-i", myRaiseVolume)
          , ("<XF86AudioMute>", spawn "amixer -D pulse set Master 1+ toggle")
 
            -- brightness
          , ("<XF86MonBrightnessUp>", spawn "xbacklight + 10")
          , ("<XF86MonBrightnessDown>", spawn "xbacklight - 10")
          ]
+  where
+    getSortByIndexNoSP = fmap (.namedScratchpadFilterOutWorkspace) getSortByIndex
